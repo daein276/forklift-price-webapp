@@ -1,0 +1,7 @@
+streamlit
+pandas
+pdfplumber
+gspread
+google-auth
+bcrypt
+openpyxl
