@@ -50,9 +50,8 @@ def _ensure_header(ws, columns):
         ws.append_row(columns)
 
 
-@st.cache_data(ttl=30, show_spinner=False)
-def load_data(_cache_key=0):
-    """표준리스트 탭 전체를 DataFrame으로 읽어온다. 시트 행 번호(2부터 시작)를 '_row'로 포함."""
+def _read_standard_df():
+    """표준리스트 탭 전체를 캐시 없이 읽어온다 (내부용)."""
     ws = _get_or_create_worksheet(STANDARD_SHEET, STANDARD_COLUMNS)
     _ensure_header(ws, STANDARD_COLUMNS)
     records = ws.get_all_records(expected_headers=STANDARD_COLUMNS)
@@ -64,6 +63,13 @@ def load_data(_cache_key=0):
             if col not in df.columns:
                 df[col] = None
         df = df[STANDARD_COLUMNS]
+    return df
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def load_data(_cache_key=0):
+    """표준리스트 탭 전체를 DataFrame으로 읽어온다. 시트 행 번호(2부터 시작)를 '_row'로 포함."""
+    df = _read_standard_df()
     df["_row"] = range(2, len(df) + 2)
     for col in ["톤수", "마스트높이", "장비년식", "배터리년식", "배터리용량", "가동시간", "금액"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
@@ -90,6 +96,23 @@ def append_rows(df: pd.DataFrame):
     _ensure_header(ws, STANDARD_COLUMNS)
     values = df[STANDARD_COLUMNS].fillna("").astype(str).values.tolist()
     ws.append_rows(values, value_input_option="USER_ENTERED")
+    load_data.clear()
+
+
+def replace_company_rows(company: str, new_df: pd.DataFrame):
+    """해당 업체의 기존 표준리스트 데이터를 전부 지우고 new_df로 교체한다 (월간 재업로드용)."""
+    ws = _get_or_create_worksheet(STANDARD_SHEET, STANDARD_COLUMNS)
+    existing = _read_standard_df()
+    remaining = existing[existing["업체명"] != company]
+    parts = [remaining]
+    if new_df is not None and not new_df.empty:
+        parts.append(new_df[STANDARD_COLUMNS])
+    combined = pd.concat(parts, ignore_index=True) if len(parts) > 1 else remaining
+    ws.clear()
+    ws.append_row(STANDARD_COLUMNS)
+    if not combined.empty:
+        values = combined[STANDARD_COLUMNS].fillna("").astype(str).values.tolist()
+        ws.append_rows(values, value_input_option="USER_ENTERED")
     load_data.clear()
 
 
