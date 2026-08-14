@@ -25,6 +25,7 @@ def _do_login(username: str, password: str) -> bool:
         "username": username,
         "company": user.get("display_name", username),
         "is_admin": bool(user.get("is_admin", False)),
+        "can_upload": bool(user.get("can_upload", True)),
     }
     return True
 
@@ -71,4 +72,12 @@ def require_admin():
     user = current_user()
     if not user or not user["is_admin"]:
         st.error("관리자만 접근할 수 있는 페이지입니다.")
+        st.stop()
+
+
+def require_upload_permission():
+    """업로드 권한이 없는 계정(구경/검색 전용)은 접근을 막는다. require_login() 이후에 호출할 것."""
+    user = current_user()
+    if not user or not user.get("can_upload", True):
+        st.error("이 계정은 시세검색만 가능합니다. 업로드 권한이 필요하면 관리자에게 문의해주세요.")
         st.stop()
