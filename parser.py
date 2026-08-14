@@ -35,6 +35,14 @@ BRAND_MAP = {
 BRAND_KEYS = sorted(BRAND_MAP.keys(), key=len, reverse=True)
 
 
+def mask_company_name(name):
+    """시세검색 화면에서 다른 협력업체에게 보여줄 때 쓰는 마스킹. 항도 -> 항*, 롯데렌탈 -> 롯***"""
+    s = str(name).strip()
+    if not s or s.lower() == "nan" or len(s) <= 1:
+        return s
+    return s[0] + "*" * (len(s) - 1)
+
+
 def to_number(value):
     if value is None:
         return None
