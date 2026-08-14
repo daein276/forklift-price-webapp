@@ -3,6 +3,7 @@ import streamlit as st
 
 import sheets
 from auth import require_login, current_user
+from parser import mask_company_name
 
 st.set_page_config(page_title="시세검색", page_icon="🔎", layout="wide")
 require_login()
@@ -16,14 +17,22 @@ if df.empty:
     st.info("아직 업로드된 데이터가 없습니다. '업로드' 메뉴에서 리스트를 올려주세요.")
     st.stop()
 
+show_real_company = user["is_admin"]
+
 def options(col):
     if col not in df.columns:
         return ["전체"]
     vals = sorted([v for v in df[col].dropna().unique().tolist() if str(v).strip() != ""])
     return ["전체"] + vals
 
+def company_options():
+    names = df["업체명"].dropna().unique().tolist()
+    if show_real_company:
+        return ["전체"] + sorted(names)
+    return ["전체"] + sorted({mask_company_name(n) for n in names})
+
 c1, c2, c3, c4, c5 = st.columns(5)
-company = c1.selectbox("업체", options("업체명"))
+company = c1.selectbox("업체", company_options())
 brand = c2.selectbox("브랜드", options("브랜드"))
 kind = c3.selectbox("장비종류", options("장비종류"))
 ton = c4.selectbox("톤수", options("톤수"))
@@ -36,7 +45,10 @@ status = c8.selectbox("상태", ["판매중", "판매완료", "전체"])
 
 result = df.copy()
 if company != "전체":
-    result = result[result["업체명"] == company]
+    if show_real_company:
+        result = result[result["업체명"] == company]
+    else:
+        result = result[result["업체명"].apply(mask_company_name) == company]
 if brand != "전체":
     result = result[result["브랜드"] == brand]
 if kind != "전체":
@@ -71,4 +83,7 @@ else:
                  "마스트종류", "마스트높이", "장비년식", "배터리년식", "배터리용량", "가동시간",
                  "금액", "상태", "비고", "파일명", "업로드일시"]
     result = result.sort_values("금액", na_position="last")
-    st.dataframe(result[show_cols], use_container_width=True, height=550)
+    display = result[show_cols].copy()
+    if not show_real_company:
+        display["업체명"] = display["업체명"].apply(mask_company_name)
+    st.dataframe(display, use_container_width=True, height=550)
