@@ -3,11 +3,12 @@ from datetime import datetime
 import streamlit as st
 
 import sheets
-from auth import require_login, current_user
+from auth import require_login, current_user, require_upload_permission
 from parser import parse_uploaded_file, rows_to_dataframe
 
 st.set_page_config(page_title="업로드", page_icon="📤", layout="wide")
 require_login()
+require_upload_permission()
 user = current_user()
 
 st.title("📤 리스트 업로드")
